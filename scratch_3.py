@@ -41,10 +41,10 @@ def data_prepare(df):
     if len(dmc) < 2:
         dmc = '0' + dmc
     df['carts_created_at'] = dsc + dmc
-    #df['time'] = df['month_id'].astype(int) - df['carts_created_at'].astype(int)
-    #df['completed_hw']=df['completed_hw'] - df['reworked_hw']
-    #df['failed_hw'] = df['failed_hw'] - df['reworked_hw']
-    #df = df.drop(columns='reworked_hw')
+    df['time'] = df['month_id'].astype(int) - df['carts_created_at'].astype(int)
+    df['completed_hw']=df['completed_hw'] - df['reworked_hw']
+    df['failed_hw'] = df['failed_hw'] - df['reworked_hw']
+    df = df.drop(columns='reworked_hw')
     df = df.drop(columns='hw_leader')
     df = df.drop(columns='month_id')
     df = df.drop(columns='carts_created_at')
@@ -59,14 +59,15 @@ def data_prepare(df):
     df['country'].where(~(df.country != '0'), other=1, inplace=True)
     #df = df.drop(columns='city')
     #df = df.drop(columns='speed_recall')
-    #df = df.drop(columns='p_missed_calls')
+    df = df.drop(columns='p_missed_calls')
     #df = df.drop(columns='p_total_calls')
 
-    #df = df.drop(columns='bought_d1')
-   # df = df.drop(columns='bought_d2')
-    #df = df.drop(columns='bought_d3')
-    #df = df.drop(columns='bought_d4')
-   # df = df.drop(columns='bought_d5')
+    df = df.drop(columns='bought_d1')
+    df = df.drop(columns='bought_d2')
+    df = df.drop(columns='bought_d3')
+    df = df.drop(columns='bought_d4')
+    df = df.drop(columns='bought_d5')
+    #df = df.drop(columns='student_id')
     df = df.drop(columns='p_was_conversations')
     #df = df.drop(columns='country')
     df = df.replace({'os': {'Android': '1', 'iOS': '2', 'Linux': '3', 'Mac OS X': '4', 'Ubuntu': '5', 'Windows': '6', 'Fedora': '7', 'Chrome OS': '8'}})
@@ -125,43 +126,26 @@ def science(col, preds, filecsv_from, filecsv_to,colim):
     plt.xlabel('Importance', fontsize=25, weight='bold')
     plt.ylabel('Features', fontsize=25, weight='bold')
     plt.title('Feature Importance', fontsize=25, weight='bold')
-    #plt.show()
+    plt.show()
     print(importances)
+    ###
+
+
     '''
-    from sklearn.model_selection import RandomizedSearchCV
-    _    max_features = ['log2', 'sqrt']
-    max_depth = [int(x) for x in np.linspace(start=1, stop=15, num=15)]
-    min_samples_split = [int(x) for x in np.linspace(start=2, stop=50, num=10)]
-    min_samples_leaf = [int(x) for x in np.linspace(start=2, stop=50, num=10)]
-    bootstrap = [True, False]
-    param_dist = {'n_estimators': n_estimators,
-                  'max_features': max_features,
-                  'max_depth': max_depth,
-                  'min_samples_split': min_samples_split,
-                  'min_samples_leaf': min_samples_leaf,
-                  'bootstrap': bootstrap}
-    rs = RandomizedSearchCV(rfc,
-                            param_dist,
-                            n_iter=100,
-                            cv=3,
-                            verbose=1,
-                            n_jobs=-1,
-                            random_state=0)
-    rs.fit(X_train_scaled, y_train)
-    rs.best_params_
-    rs_df = pd.DataFrame(rs.cv_results_).sort_values('rank_test_score').reset_index(drop=True)
-    rs_df = rs_df.drop([
-        'mean_fit_time',
-        'std_fit_time',
-        'mean_score_time',
-        'std_score_time',
-        'params',
-        'split0_test_score',
-        'split1_test_score',
-        'split2_test_score',
-        'std_test_score'],
-        axis=1)
-    rs_df.head(51)
+    pca_test = PCA(n_components=52)
+    pca_test.fit(X_train_scaled)
+    sns.set(style='whitegrid')
+    plt.plot(np.cumsum(pca_test.explained_variance_ratio_))
+    plt.xlabel('number of components')
+    plt.ylabel('cumulative explained variance')
+    plt.axvline(linewidth=4, color='r', linestyle='--', x=52, ymin=0, ymax=1)
+    plt.show()
+    evr = pca_test.explained_variance_ratio_
+    cvr = np.cumsum(pca_test.explained_variance_ratio_)
+    pca_df = pd.DataFrame()
+    pca_df['Cumulative Variance Ratio'] = cvr
+    pca_df['Explained Variance Ratio'] = evr
+    pca_df.head(52)
     '''
 ##########
 
@@ -169,7 +153,7 @@ def science(col, preds, filecsv_from, filecsv_to,colim):
     #models.append(('LR', LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None, solver='liblinear', max_iter=300, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1, l1_ratio=None)))
     #models.append(('LDA', LinearDiscriminantAnalysis()))
     #models.append(('KNN', KNeighborsClassifier()))
-    models.append(('RF',RandomForestClassifier(random_state=0)))
+    models.append(('RF',RandomForestClassifier(random_state=42)))
     #models.append(('CART', DecisionTreeClassifier(random_state=42)))
     #models.append(('NB', GaussianNB()))
     #models.append(('SVM', SVC(gamma='auto')))
@@ -185,9 +169,9 @@ def science(col, preds, filecsv_from, filecsv_to,colim):
     msg_row = []
     best = []
     for name, model in models:
-        modi = model.fit(X_train, Y_train)
+        modi = model.fit(X_train_scaled, y_train)
 
-        predi = modi.predict(X_validation)
+        predi = modi.predict(X_test_scaled)
         #predi = pd.DataFrame({col: predi})
         recall = sklearn.metrics.recall_score(Y_validation, predi,average='macro')
         presc = sklearn.metrics.precision_score(Y_validation, predi,average='macro')
